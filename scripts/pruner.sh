@@ -1,7 +1,7 @@
 
 #!/bin/bash
 MODEL_NAME="llama-2-7b"
-MODEL_PATH="~/$MODEL_NAME"
+MODEL_PATH="~/hf_models/$MODEL_NAME"
 RESULT_PATH="~/LLaMA-Pruner/result"
 
 # python pruner.py \
@@ -21,7 +21,7 @@ REMAINING_LAYERS=$((TOTAL_LAYERS - $(echo $LAYERS_TO_REMOVE | wc -w)))
 OUTPUT_DIR="$RESULT_PATH/$MODEL_NAME-${REMAINING_LAYERS}layer"
 mkdir -p "$OUTPUT_DIR"
 
-python src/pruner.py \
+python src/pruner_parallel.py \
     --model_path "$MODEL_PATH" \
     --metadata_path "$MODEL_PATH/pytorch_model.bin.index.json" \
     --output_dir "$OUTPUT_DIR" \
