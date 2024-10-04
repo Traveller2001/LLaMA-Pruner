@@ -21,30 +21,15 @@ def input_state_hook(module, input, output):
     _hooked_hidden_states.append((input[0].detach()))
 
 
-def mamba_output_hidden_state_hook(module, input, output):
-    _hooked_hidden_states.append((output.detach()))
 
 def output_hidden_state_hook(module, input, output):
      _hooked_hidden_states.append((output[0].detach()))
-
-def register_mambamodel_hook(model):
-    for idx, layer in enumerate(model.backbone.layers):
-        if idx == 0:
-            layer.register_forward_hook(input_state_hook)
-        layer.register_forward_hook(mamba_output_hidden_state_hook)
-
-def register_rwkvmodel_hook(model):
-    for idx, layer in enumerate(model.rwkv.blocks):
-        if idx == 0:
-            layer.register_forward_hook(input_state_hook)
-        layer.register_forward_hook(output_hidden_state_hook)
 
 def register_model_hook(model):
     for idx, layer in enumerate(model.model.layers):
         if idx == 0:
             layer.register_forward_hook(input_state_hook)
         layer.register_forward_hook(output_hidden_state_hook)
-
 
     
 if __name__ == "__main__":
@@ -59,36 +44,25 @@ if __name__ == "__main__":
     logger.info(f'args: {args}')
 
     logger.info(f'loading tokenizer from {args.model_path} ...')
-    if 'mamba' in args.model_name:
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.model_path,
-            trust_remote_code=True, 
-            add_bos_token=False, 
-            add_eos_token=False,
-            use_fast = True)
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.model_path,
-            trust_remote_code=True, 
-            add_bos_token=False, 
-            add_eos_token=False,
-            use_fast = False)
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_path,
+        trust_remote_code=True, 
+        add_bos_token=False, 
+        add_eos_token=False,
+        use_fast = False)
     logger.info("tokenizer loaded")
 
     logger.info(f'loading model from {args.model_path} ...')
     model = AutoModelForCausalLM.from_pretrained(args.model_path,
                                                  trust_remote_code=True,  
-                                                torch_dtype=dtype_dict[args.dtype],
+                                                 torch_dtype=dtype_dict[args.dtype],
                                                  device_map="cuda:0",
                                                 #  use_flash_attention_2="flash_attention_2",
                                             )
     logger.info("model loaded")
-    if 'mamba' in args.model_name:
-        register_mambamodel_hook(model)
-    elif 'rwkv' in args.model_name:
-        register_rwkvmodel_hook(model)
-    else:
-        register_model_hook(model)
+
+    register_model_hook(model)
     
     test_splits = open(args.calib_set).readlines()
     logger.add('log/store_hidden_state.log')
