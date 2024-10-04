@@ -1,0 +1,2 @@
+2024-10-04 20:31:41.266 | INFO     | __main__:<module>:89 - sample number:1000
+2024-10-04 20:31:41.430 | INFO     | __main__:<module>:92 - saveing hidden_states to output/llama-2-7b/hidden_state_pg19.pt
