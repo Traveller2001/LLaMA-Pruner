@@ -65,6 +65,8 @@ if __name__ == "__main__":
     register_model_hook(model)
     
     test_splits = open(args.calib_set).readlines()
+    import pdb
+    pdb.set_trace()
     logger.add('log/store_hidden_state.log')
     layerwise_hidden_states = None
     sample_cnt = 0
