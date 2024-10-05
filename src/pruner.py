@@ -4,12 +4,42 @@ from safetensors.torch import load_file, save_file
 import glob
 import os
 import torch
+import shutil
 
 def load_model(args, file_path):
     if args.safetensor:
         return load_file(file_path)
     else:
         return torch.load(file_path, map_location='cpu', weights_only=True)
+
+
+def load_model(args, file_path):
+    if args.safetensor:
+        return load_file(file_path)
+    else:
+        return torch.load(file_path, map_location='cpu', weights_only=True)
+
+def copy_files(src_dir, dst_dir, patterns, exclude_patterns=None):
+    for pattern in patterns:
+        for file_path in glob.glob(os.path.join(src_dir, pattern)):
+            if exclude_patterns and any(file_path.endswith(ep) for ep in exclude_patterns):
+                continue
+            shutil.copy2(file_path, dst_dir)
+            print(f"Copied {os.path.basename(file_path)} to {dst_dir}")
+
+def update_config_json(config_path, remaining_layers):
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    
+    if 'num_hidden_layers' in config:
+        config['num_hidden_layers'] = remaining_layers
+        print(f"Updated num_hidden_layers to {remaining_layers}")
+    else:
+        print("num_hidden_layers not found in config.json")
+    
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -71,6 +101,16 @@ def main():
         json.dump(new_metadata, f, indent=2)
 
     print(f"Model and metadata saved to {output_model_path} and {output_metadata_path}")
+    
+    # Copy JSON files (excluding *index.json) and tokenizer.model from model_path to output_dir
+    copy_files(args.model_path, args.output_dir, ['*.json', 'tokenizer.model'], ['index.json'])
+
+    # Update config.json
+    config_path = os.path.join(args.output_dir, "config.json")
+    if os.path.exists(config_path):
+        update_config_json(config_path, remaining_layers)
+    else:
+        print("config.json not found in the output directory")
 
 
 if __name__ == "__main__":

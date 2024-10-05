@@ -21,7 +21,7 @@ REMAINING_LAYERS=$((TOTAL_LAYERS - $(echo $LAYERS_TO_REMOVE | wc -w)))
 OUTPUT_DIR="$RESULT_PATH/$MODEL_NAME-${REMAINING_LAYERS}layer"
 mkdir -p "$OUTPUT_DIR"
 
-python src/pruner_parallel.py \
+python src/pruner.py \
     --model_path "$MODEL_PATH" \
     --metadata_path "$MODEL_PATH/pytorch_model.bin.index.json" \
     --output_dir "$OUTPUT_DIR" \
