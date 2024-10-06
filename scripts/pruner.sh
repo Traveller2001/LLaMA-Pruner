@@ -1,7 +1,7 @@
 
 #!/bin/bash
 MODEL_NAME="llama-2-7b"
-MODEL_PATH="/141nfs/zhangqingyu_17/hf_models/$MODEL_NAME"
+MODEL_PATH="~/hf_models/$MODEL_NAME"
 RESULT_PATH="./result"
 
 # python pruner.py \
