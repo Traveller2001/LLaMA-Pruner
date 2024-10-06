@@ -27,3 +27,5 @@ python src/pruner.py \
     --output_dir "$OUTPUT_DIR" \
     --layers_to_remove $LAYERS_TO_REMOVE \
     --total_layers $TOTAL_LAYERS
+
+
