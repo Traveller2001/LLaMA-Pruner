@@ -12,7 +12,7 @@ def load_model(args, file_path):
     if args.safetensor:
         return load_file(file_path)
     else:
-        return torch.load(file_path, map_location='cpu', weights_only=True)
+        return torch.load(file_path, map_location='cpu')
 
 def copy_files(src_dir, dst_dir, patterns, exclude_patterns=None):
     for pattern in patterns:
@@ -54,9 +54,9 @@ def main():
     with open(args.metadata_path, 'r') as f:
         metadata = json.load(f)
 
-    model = {}
     print("Loading model weights")
-    for weight_key, weight_file in tqdm(metadata['weight_map'].items(), desc="Loading weights"):
+    model = {}
+    for weight_file in tqdm(set(metadata['weight_map'].values()), desc="Loading weights"):
         model.update(load_model(args, os.path.join(args.model_path, weight_file)))
     
     num_layers = args.total_layers
