@@ -5,15 +5,10 @@ import glob
 import os
 import torch
 import shutil
+from tqdm import tqdm
 
 def load_model(args, file_path):
-    if args.safetensor:
-        return load_file(file_path)
-    else:
-        return torch.load(file_path, map_location='cpu', weights_only=True)
-
-
-def load_model(args, file_path):
+    print(f"Loading model from {file_path}")
     if args.safetensor:
         return load_file(file_path)
     else:
@@ -28,6 +23,7 @@ def copy_files(src_dir, dst_dir, patterns, exclude_patterns=None):
             print(f"Copied {os.path.basename(file_path)} to {dst_dir}")
 
 def update_config_json(config_path, remaining_layers):
+    print(f"Updating config.json at {config_path}")
     with open(config_path, 'r') as f:
         config = json.load(f)
     
@@ -35,11 +31,11 @@ def update_config_json(config_path, remaining_layers):
         config['num_hidden_layers'] = remaining_layers
         print(f"Updated num_hidden_layers to {remaining_layers}")
     else:
-        print("num_hidden_layers not found in config.json")
+        print("Warning: num_hidden_layers not found in config.json")
     
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
-
+    print("Config update complete")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -51,24 +47,30 @@ def main():
     parser.add_argument('--safetensor', action='store_true')
     args = parser.parse_args()
 
+    print("Starting model layer removal process")
+    print(f"Total layers: {args.total_layers}")
+    print(f"Layers to remove: {args.layers_to_remove}")
+
     with open(args.metadata_path, 'r') as f:
         metadata = json.load(f)
 
     model = {}
-    for weight_key, weight_file in metadata['weight_map'].items():
+    print("Loading model weights")
+    for weight_key, weight_file in tqdm(metadata['weight_map'].items(), desc="Loading weights"):
         model.update(load_model(args, os.path.join(args.model_path, weight_file)))
     
-    num_layers = args.total_layers  # total number of layers
+    num_layers = args.total_layers
     remaining_layers = num_layers - len(args.layers_to_remove)
+    print(f"Removing {len(args.layers_to_remove)} layers, {remaining_layers} layers will remain")
 
-     # Filter out the layers to remove
-    filtered_model = {k: v for k, v in model.items() if not any(k.startswith(f'model.layers.{i}.') for i in args.layers_to_remove)}
+    print("Filtering out layers to remove")
+    filtered_model = {k: v for k, v in tqdm(model.items(), desc="Filtering layers") if not any(k.startswith(f'model.layers.{i}.') for i in args.layers_to_remove)}
 
-    # Remap the remaining layers
+    print("Remapping remaining layers")
     new_model = {}
     new_weight_map = {}
     layer_idx = 0
-    for i in range(num_layers):
+    for i in tqdm(range(num_layers), desc="Remapping layers"):
         if i not in args.layers_to_remove:
             for key, value in filtered_model.items():
                 if key.startswith(f'model.layers.{i}.'):
@@ -77,41 +79,41 @@ def main():
                     new_weight_map[new_key] = f"model-{remaining_layers}layers-00001-of-00001.safetensors"
             layer_idx += 1
     
-    # Add other non-layer weights to the new model
-    for key, value in model.items():
+    print("Adding non-layer weights to the new model")
+    for key, value in tqdm(model.items(), desc="Adding non-layer weights"):
         if not key.startswith('model.layers.'):
             new_model[key] = value
             new_weight_map[key] = f"model-{remaining_layers}layers-00001-of-00001.safetensors"
 
-    # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
+    print(f"Created output directory: {args.output_dir}")
 
-    # Save the new model
     output_model_path = os.path.join(args.output_dir, f"model-{remaining_layers}layers-00001-of-00001.safetensors")
     meta_data = {"format": "pt"}
+    print(f"Saving new model to {output_model_path}")
     save_file(new_model, output_model_path, metadata=meta_data)
 
-    # Update the metadata
     new_metadata = {
         "metadata": metadata["metadata"],
         "weight_map": new_weight_map
     }
     output_metadata_path = os.path.join(args.output_dir, f"model-{remaining_layers}layers.safetensors.index.json")
+    print(f"Saving new metadata to {output_metadata_path}")
     with open(output_metadata_path, 'w') as f:
         json.dump(new_metadata, f, indent=2)
 
-    print(f"Model and metadata saved to {output_model_path} and {output_metadata_path}")
+    print(f"Model and metadata saved successfully")
     
-    # Copy JSON files (excluding *index.json) and tokenizer.model from model_path to output_dir
+    print("Copying additional files")
     copy_files(args.model_path, args.output_dir, ['*.json', 'tokenizer.model'], ['index.json'])
 
-    # Update config.json
     config_path = os.path.join(args.output_dir, "config.json")
     if os.path.exists(config_path):
         update_config_json(config_path, remaining_layers)
     else:
-        print("config.json not found in the output directory")
+        print("Warning: config.json not found in the output directory")
 
+    print("Model layer removal process completed successfully")
 
 if __name__ == "__main__":
     main()
